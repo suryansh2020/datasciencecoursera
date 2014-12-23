@@ -32,6 +32,30 @@ dataCat <- data.frame(matrix(
 dataCat[dataCat <= 0] <- 0
 dataCat[dataCat > 0] <- 1
 
+# Generate a set of outliers based on a normal distribution.
+# def: an outlier occurs >= 3 standard deviations from the mean or
+#      < 99.7 percent.
+# Outliers already exist for the continuous variables so no need to
+# write/include anything in this function.
+
+outlierSample <- function(mydata, percent){
+  # mydata: data frame
+  # percent: as a decimal
+  if (percent > 1 || percent < 0){
+    stop("Percent must be a decimal < 1 && > 0")
+  }
+  else{
+    n <- round(percent * nrow(mydata))
+    mydata[] <- 0
+    mydata[sample(nrow(mydata), n), ] <- 1
+    return(mydata)
+  }
+}
+
+dataOut <- outlierSample(dataCont, 0.003)
+
+### Scatter plots ###
+
 # scatterplot for continuous normally distributed vars.
 ggplot(dataCont)+
   ggtitle("Continuous normally distributed variables") +
@@ -43,6 +67,26 @@ ggplot(dataCat)+
   ggtitle("Categorical normally distributed variables") +
   geom_point(aes(x=dataCat$X1, y=dataCat$X2), size=3)
 ggsave("plots/cat_scatter.png", width=4, height=4, dpi=100) #plot 2
+
+# scatterplot for categorical outliers 
+ggplot(dataCat)+
+  ggtitle("Categorical variables with outliers") +
+  geom_point(aes(x=dataCat$X1, y=dataCat$X2), size=3)
+ggsave("plots/cat_scatter.png", width=4, height=4, dpi=100) #plot 3
+
+### Descriptive statistics ###
+
+## Categorical
+
+matchingRows <- function(mydata, decrease=TRUE){
+  # Categorical: how many 1's in each row?
+  matches <- numeric(nrow(mydata))
+  for (row in 1:nrow(mydata)){
+    matches[row] <- sum(mydata[row,])
+  }
+  return(sort(matches, decreasing=decrease))
+}
+
 
 
 ################################
