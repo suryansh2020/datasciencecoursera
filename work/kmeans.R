@@ -115,5 +115,29 @@ clusplot(dataCat, cat$cluster, color=TRUE, shade=TRUE,
 plotcluster(dataCat, cat$cluster)
 
 
+## Pros so far
+# This may be a good approach for clustering on outliers
+# Categorical variables don't seem to really effect the outcome, although
+#     we don't really have an outcome either way. The effect might be smaller
+#     than anticipated. Can you show why this happens?
 
+## Cons so far
+# Distinct clusters aren't really formed when the data is normally distributed
+# It's hard to choose the 'right' number of clusters
+# An incorrect cluster choice could pull 'outliers' into a larger cluster
 
+## Additional things to check
+# How will the clustering work if we anticipate outliers?
+#
+# Need to have a better explanation of which math you're using when
+#      you calculate the cost function. How exactly does the cost
+#      function work? What's your x coordinate? why? Need to be able
+#      to better explain the 'elbow method'.
+#
+# Need to have more patience stepping through the math. It seems like you
+# have an intuitive understanding for how the algorithm works.
+#
+# How does this specifically tie back into datameer?
+#
+# Remember what Glenn said -- we're really just filtering on 1's. It's not
+# any more complicated. Does kmeans make it easier to filter on 1's?
