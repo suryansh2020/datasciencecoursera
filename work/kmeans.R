@@ -3,14 +3,18 @@
 ## http://www.datameer.com/documentation/current/Clustering
 # Online references
 ## http://www.statmethods.net/advstats/cluster.html
+## http://stats.stackexchange.com/questions/48520
 ## http://stackoverflow.com/questions/15376075
 ## https://class.coursera.org/ml-005/lecture/78
 ## https://class.coursera.org/ml-005/lecture/79
 ## https://class.coursera.org/ml-005/lecture/80
 ## https://class.coursera.org/ml-005/lecture/81
+
+
 library(cluster)
 library(ggplot2)
 library(fpc)
+
 # clean house
 #rm(list = ls(), envir = globalenv())
 
@@ -18,19 +22,20 @@ library(fpc)
 ### Create simulation data ####
 ###############################
 
-# Create 100 columns and 1000 rows
-nrow <- 1000
-ncol <- 100
+simulations <- function(nrow, ncol){
+  # Generate continuous normally distributed variables.
+  dataCont <- data.frame(matrix( 
+    rnorm(nrow*ncol, mean=0,sd=1), nrow, ncol))
 
-# Generate continuous normally distributed variables.
-dataCont <- data.frame(matrix( 
-  rnorm(nrow*ncol, mean=0,sd=1), nrow, ncol))
+  # Generate categorical normally distributed variables.
+  dataCat <- data.frame(matrix(
+    rnorm(nrow*ncol, mean=0,sd=1), nrow, ncol))
+  dataCat[dataCat <= 0] <- 0
+  dataCat[dataCat > 0] <- 1
 
-# Generate categorical normally distributed variables.
-dataCat <- data.frame(matrix(
-  rnorm(nrow*ncol, mean=0,sd=1), nrow, ncol))
-dataCat[dataCat <= 0] <- 0
-dataCat[dataCat > 0] <- 1
+  # return values
+  return(list(dataCont= dataCont, dataCat= dataCat))
+}
 
 # Generate a set of outliers based on a normal distribution.
 # def: an outlier occurs >= 3 standard deviations from the mean or
@@ -57,30 +62,28 @@ outlierSample <- function(mydata, percent){
   }
 }
 
-dataOut <- outlierSample(dataCont, 0.003)
-
 ### Scatter plots ###
 
 # scatterplot for continuous normally distributed vars.
 
-scatterplots <- function(){
+scatterplots <- function(dataCont, dataCat, dataOut){
   ## Various scatterplots for generated data
   
   ggplot(dataCont)+
     ggtitle("Continuous normally distributed variables") +
-      geom_point(aes(x=dataCont$X1, y=dataCont$X2), size=3)
+      geom_point(aes(x=X1, y=X2), size=3)
   ggsave("plots/cont_scatter.png", width=4, height=4, dpi=100) #plot 1
   
   # scatterplot for categorical normally distributed vars.
   ggplot(dataCat)+
     ggtitle("Categorical normally distributed variables") +
-      geom_point(aes(x=dataCat$X1, y=dataCat$X2), size=3)
+      geom_point(aes(x=X1, y=X2), size=3)
   ggsave("plots/cat_scatter.png", width=4, height=4, dpi=100) #plot 2
 
   # scatterplot for categorical outliers 
-  ggplot(dataCat)+
+  ggplot(dataOut)+
     ggtitle("Categorical variables with outliers") +
-      geom_point(aes(x=dataCat$X1, y=dataCat$X2), size=3)
+      geom_point(aes(x=X1, y=X2), size=3)
   ggsave("plots/cat_scatter.png", width=4, height=4, dpi=100) #plot 3
 }
 #scatterplots()
@@ -98,28 +101,36 @@ matchingRows <- function(mydata, decrease=TRUE){
   return(sort(matches, decreasing=decrease))
 }
 
-matches <- matchingRows(dataOut)
+matchingPlot <- function(mydata, filename, chart.title,
+                         xaxis, yaxis){ # dataOut
+  matches <- matchingRows(mydata)
 
-png('plots/hist_cat_outliers.png')
-hist(matches, main= "Histogram of Outliers as Categorical Variables",
-     xlab= "Sum of each row", ylab="Occurences out of 1000")
-dev.off()
+  png(paste('plots/', filename, '.png', sep=""))
+      hist(matches, main= chart.title,
+           xlab= xaxis, ylab= yaxis)
+  dev.off()
+}
 
 ################################
 ### Create K-means clusters ####
 ################################
 
-# Continuous variables
-cont <- kmeans(dataCont, centers = 3, iter.max= 100, 
-        algorithm="Hartigan-Wong")
+getKmeans <- function(dataCont, dataCat, dataOut){
+    # Continuous variables
+    cont <- kmeans(dataCont, centers = 3, iter.max= 100, 
+                   algorithm="Hartigan-Wong")
 
-# Categorical variables
-cat <- kmeans(dataCat, centers = 3, iter.max= 100,
-              algorithm="Hartigan-Wong")
+    # Categorical variables
+    cat <- kmeans(dataCat, centers = 3, iter.max= 100,
+                  algorithm="Hartigan-Wong")
 
-# Categorical as outliers
-catout <- kmeans(dataOut, centers = 3, iter.max= 100,
-                 algorithm="Hartigan-Wong")
+    # Categorical as outliers
+    catout <- kmeans(dataOut, centers = 3, iter.max= 100,
+                     algorithm="Hartigan-Wong")
+    return(list(cont= cont,
+                cat= cat,
+                catout= catout))
+}
 
 ##############################################################
 ### Choosing the number of clusters: must be done manually ###
@@ -138,7 +149,7 @@ elbowMethod <- function(mydata, numClusters){
        ylab="Within groups sum of squares")
 }
 
-plotMonster <- function(){
+plotMonster <- function(dataCont, dataCat, dataOut){
   ## Plots that show the 'elbow method'
   
   # continuous
@@ -169,19 +180,15 @@ plotMonster <- function(){
   dev.off()
 }
 
-#plotMonster()
-
 # Substantive approach (for what purpose are you running kmeans?
 
 ## This seems to be the better approach.
-
-
 
 #################################
 ### Plot K-means clusters #######
 #################################
 
-plotMonster2 <- function(){
+plotMonster2 <- function(dataCont, dataCat, dataOut){
   ## Various plots for k-means clusters
   
   # Continuous variables
@@ -203,25 +210,7 @@ plotMonster2 <- function(){
   plotcluster(dataOut, catout$cluster)
 }
 
-# plotMonster2()
-
-######################
-### Use cases ########
-######################
-
-# When variables are normally distributed, either continuous or
-#   categorical, we aren't able to generate clusters that return
-#   anything that would appear to be meaningful for indicators.
-# When we simulate outliers as categorical variables, then kmeans
-#  does a pretty reasonable job clustering the rows that include the
-#  maximum number of matches across each row.
-# If we could write a function similar to matchingRows() and then
-#   filter on the number of matching entries in each row, it would
-#   probably be more helpful than kmeans.
-
-
 # generated data for outliers as categorical variables
-summary(dataOut)
 
 # matching rows for generated data
 plotMatches <- function(dataOut){
@@ -234,17 +223,14 @@ plotMatches <- function(dataOut){
   dev.off()
 }
 
-#plotMatches(dataOut)
-
 # comparing kmeans to matchingRows()
 clusterCount <- function(kmeansObject){
   counts <- numeric(length(unique(kmeansObject$cluster)))
-  for (clusterNum in 1:max(length(counts)){
+  for (clusterNum in 1:max(length(counts))){
     counts[clusterNum] <- sum(kmeansObject$cluster == clusterNum)
   }
   return(counts)
 }
-
 
 
 rowCount <- function(rowcountObject){
@@ -259,65 +245,5 @@ rowCount <- function(rowcountObject){
   return(counts)
 }
 
-# kmeans membership
-clusterCount(catout)
-# summed rows membership
-rowCount(dataOut)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Pros so far
-# This may be a good approach for clustering on outliers
-# Categorical variables don't seem to really effect the outcome,
-#     although we don't really have an outcome either way. The effect
-#     might be smaller than anticipated. Can you show why this happens?
-
-## Cons so far
-# Distinct clusters aren't really formed when the data is normally
-#          distributed
-# It's hard to choose the 'right' number of clusters
-#
-# An incorrect cluster choice could pull 'outliers' into a larger
-#          cluster
-
-## Additional things to check
-# How will the clustering work if we anticipate outliers?
-#
-# Need to have a better explanation of which math you're using when
-#      you calculate the cost function. How exactly does the cost
-#      function work? What's your x coordinate? why? Need to be able
-#      to better explain the 'elbow method'.
-#
-# Need to have more patience stepping through the math. It seems like
-#      you have an intuitive understanding for how the algorithm works.
-#
-# How does this specifically tie back into datameer?
-#
-# Remember what Glenn said -- we're really just filtering on 1's.
-#     It's not any more complicated. Does kmeans make it easier to
-#     filter on 1's?
+  
+ 
